@@ -1,0 +1,6 @@
+# To install all required packages automatically, run: pip install -r requirements.txt
+python-docx
+pillow
+pandas
+matplotlib
+dataframe-image
