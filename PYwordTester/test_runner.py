@@ -97,7 +97,7 @@ class Cell:
             # Access the cell and set its text
             if isinstance(value, float) or isinstance(value, int):
                 value = self._format_number(value)
-            self.cell.text = str(value)
+            self.cell.text = str(value).rstrip('\r\n')
     
             # Apply formatting to the cell's text
             for paragraph in self.cell.paragraphs:
@@ -178,7 +178,7 @@ class TestStep:
         self.result, self.stdout , exec_successful = context.execute(self.Auto_Action_cell.getCell())
 
         ####### step 1: store result in the word document if the return format is recognized
-        if isinstance(self.result, (str, bool, int, float)):
+        if isinstance(self.result, (str,bool, int, float)):
             self.Actual_cell.setCell(self.result, alignment=WD_ALIGN_PARAGRAPH.CENTER)
         elif isinstance(self.result, Image.Image):           
             # Use Auto_Action_cell intentionally due to layout
@@ -260,6 +260,7 @@ class TestStep:
                 self.testStatus = EVAL_OUTCOMES['BOOL ERROR']
     
         elif isinstance(self.result, str):
+            self.result = self.result.rstrip('\r\n')
             if self.result.lower() in {LL.lower(), UL.lower()}:
                 self.testStatus = EVAL_OUTCOMES['PASS']
             else:
@@ -350,7 +351,7 @@ class TestCase:
                 elif mode in {'yes', 'true', 'go', 'ok', 'run'}:
                     self.runSetting = RUN_SETTINGS["ENABLED"]
                     self.runStatus = RUN_STATUSES["NOT EXECUTED"]
-                elif mode in {'skip after fail','abort after fail','stop after fail','halt after fail','skip on fail','abort on fail','stop on fail','halt on fail'}:
+                elif mode in {'skip after fail','abort','abort after fail','stop after fail','halt after fail','skip on fail','abort on fail','stop on fail','halt on fail'}:
                     self.runSetting = RUN_SETTINGS["ABORT AFTER FAIL"]
                     self.runStatus = RUN_STATUSES["NOT EXECUTED"]
                 elif mode in {'no', 'false', 'skip', 'nok', 'disabled'}:
