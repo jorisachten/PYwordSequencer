@@ -1,0 +1,23 @@
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Jupyter runtime
+.jupyter/
+
+# VSCode settings (if applicable)
+.vscode/
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment variables and cache
+.env/
+.cache/
+
+# Temporary Microsoft Office files
+~$*
