@@ -1,10 +1,10 @@
 <div align="center">
 
-# PYwordTester
+# PYwordSequencer
 (Stop filling in manual test reports — start automating them.)
 </div>
 
-**PYwordTester** is a Python-based framework designed to automate and evaluate test sequences defined in Word documents. It executes test steps, compares results against specified limits, and generates detailed Word reports. This tool is especially useful for teams seeking consistent testing workflows and documentation during the design validation phase.
+**PYwordSequencer** is a Python-based framework designed to automate and evaluate test sequences defined in Word documents. It executes test steps, compares results against specified limits, and generates detailed Word reports. This tool is especially useful for teams seeking consistent testing workflows and documentation during the design validation phase.
 ## 🎯 Target Audience
 
 This tool is ideal for hardware developers working with hardware prototypes or in low-volume production environments.
@@ -21,7 +21,7 @@ This tool is ideal for hardware developers working with hardware prototypes or i
 
 ## ⚙️ Operation
 
-To operate the PYwordTester:
+To operate PYwordSequencer:
 
 1. Create a `TestContext` and a `TestRunner` object.
 2. Link them using a `Controller` element.
