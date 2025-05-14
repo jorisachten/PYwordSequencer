@@ -37,12 +37,11 @@ class TestContext:
         Returns:
             tuple:
                 - result (any): The value of the last executed expression or statement in the code.
-                - exec_successful (bool): True if the code executed without exceptions, False otherwise.
+                - exec_successful (bool): True if code executed without exceptions, False otherwise.
                 - printed_output (str): The content printed to stdout during the code execution.
         """
         stdout_capture = io.StringIO()
         original_stdout = sys.stdout
-        
         try:
             sys.stdout = stdout_capture  # Redirect stdout to capture printed output
 

@@ -17,6 +17,7 @@ from typing import Dict, Tuple
 import pandas as pd
 import os
 import math
+import time
 
 
 
@@ -40,14 +41,14 @@ EVAL_OUTCOMES: Dict[str, ResultOutcome] = {
     "PASS":         ResultOutcome("PASS",          RGBColor(  0, 200,   0), True),
     "FAIL":         ResultOutcome("FAIL",          RGBColor(200,   0,   0), False),
     "PY ERROR":     ResultOutcome("PY ERROR",      RGBColor(255, 165,   0), False),
-    "EXECUTED":     ResultOutcome("EXECUTED",      RGBColor(100, 100, 255), True),
+    "EXECUTED":     ResultOutcome("RUN",      RGBColor(100, 100, 255), True),
     "LIMIT MISSING":ResultOutcome("LIMIT MISSING", RGBColor(128,   0, 128), False),
     "EVAL NONE":    ResultOutcome("EVAL NONE",     RGBColor(169, 169, 169), False),
     "TYPE ERROR":   ResultOutcome("TYPE ERROR",    RGBColor(255,  99,  71), False),
     "BOOL ERROR":   ResultOutcome("BOOL ERROR",    RGBColor(255, 140,   0), False),
     "FLOAT ERROR":  ResultOutcome("FLOAT ERROR",   RGBColor( 70, 130, 180), False),
     "NO EVAL":      ResultOutcome("NO EVAL",       RGBColor(105, 105, 105), False),
-    "NOT EXECUTED": ResultOutcome("NOT EXECUTED",  RGBColor(105, 105, 105), False),
+    "NOT EXECUTED": ResultOutcome("NOT RUN",  RGBColor(105, 105, 105), False),
 }
 
 
@@ -95,8 +96,16 @@ class Cell:
             
         try:
             # Access the cell and set its text
-            if isinstance(value, float) or isinstance(value, int):
+
+            if isinstance(value, bool):
+                if value == True:
+                    value = 'True'
+                else:
+                    value = 'False'
+            elif isinstance(value, float) or isinstance(value, int):
                 value = self._format_number(value)
+                
+                
             self.cell.text = str(value).rstrip('\r\n')
     
             # Apply formatting to the cell's text
@@ -303,8 +312,8 @@ class TestCase:
         # Check if all tags are found and display missing tags if there are any
         missing_tags = set(tags_TestCase + tags_TestStep) - set(tag_positions.keys())
         if missing_tags:
-            print("Not all tags are detected in this table, skipping table")
-            print(f"Missing tags: {', '.join(missing_tags)}")
+#            print("Not all tags are detected in this table, skipping table")
+#            print(f"Missing tags: {', '.join(missing_tags)}")
             self.ValidTC = False
         else:
         ############## step2 :evaluation if the test case tags are in the same row (required) ##############
@@ -517,18 +526,26 @@ class testInstance:
 
         
         for TC in self.TCtables:            
-            if selectedGroups == None or TC.cell_group.getCell() in selectedGroups.split(','):        # check if the test is in a selected group
+            if selectedGroups is None or TC.cell_group.getCell().lower() in map(str.lower, selectedGroups.split(',')):
+                
+        # check if the test is in a selected group
                 if TC.runSetting == RUN_SETTINGS["ALWAYS"]: 
+                    print(f'Evaluating {TC.cell_title.getCell()} --> ALWAYS')
                     TC.runTestCase(self.context)
                 elif TC.runSetting == RUN_SETTINGS["ENABLED"] and a_abort_test_has_failed == False: 
+                    print(f'Evaluating {TC.cell_title.getCell()} --> ENABLED')
                     TC.runTestCase(self.context)
                 elif TC.runSetting == RUN_SETTINGS["ABORT AFTER FAIL"] and a_abort_test_has_failed == False: 
+                    print(f'Evaluating {TC.cell_title.getCell()} --> ABORT AFTER FAIL')
                     TC.runTestCase(self.context)
                     if TC.runStatus != RUN_STATUSES["PASS"]:
                         
                         a_abort_test_has_failed = True
                 elif TC.runSetting == RUN_SETTINGS["DISABLED"]:
-                    print('test is disabled')
+                    print(f'Evaluating {TC.cell_title.getCell()} --> DISABLED')
+                    
+                if TC.runStatus != RUN_STATUSES["PASS"]:
+                    print('FAILED!!')
             else:
                 TC.runSetting = RUN_SETTINGS["DISABLED"]
                 TC.runStatus  = RUN_STATUSES["DISABLED"]
@@ -586,7 +603,18 @@ class testInstance:
     
         return pd.DataFrame(data)
 
+    def all_tests_pass_or_disabled(self) -> bool:
+        for table in self.TCtables:
+            if table.runStatus.result_ok == False:
+                return False
+        return True
+        
+
+
+    
+
     def saveFile(self, path, openFile = False):
         self.doc.save(path)
+        time.sleep(1) #give os a second
         if openFile == True:
             os.startfile(path)
