@@ -65,6 +65,8 @@ RUN_SETTINGS: Dict[str, TC_RUN_SETTING] = {
     "ABORT AFTER FAIL": TC_RUN_SETTING("ABORT",           RGBColor(0, 200, 0),     True),
     "ALWAYS":           TC_RUN_SETTING("ALWAYS",          RGBColor(0, 200, 0),     True),
     "UNKNOWN":          TC_RUN_SETTING("UNKNOWN",         RGBColor(200, 0, 0),     False),
+    "IF_PREVIOUS_OK":   TC_RUN_SETTING("IF_PREVIOUS_OK",  RGBColor(0, 150, 255),   True),
+
 }
 
 
@@ -366,6 +368,9 @@ class TestCase:
                 elif mode in {'no', 'false', 'skip', 'nok', 'disabled'}:
                     self.runSetting = RUN_SETTINGS["DISABLED"]
                     self.runStatus = RUN_STATUSES["DISABLED"]
+                elif mode in {'all ok', 'on no errors', 'if previous ok', 'if no errors', 'if_previous_ok'}:
+                    self.runSetting = RUN_SETTINGS["IF_PREVIOUS_OK"]
+                    self.runStatus = RUN_STATUSES["NOT EXECUTED"]
                 else:
                     self.runSetting = RUN_SETTINGS["UNKNOWN"]
                     self.runStatus = RUN_STATUSES["ERROR"]
@@ -523,6 +528,7 @@ class testInstance:
 
     def run(self, selectedGroups = None):
         a_abort_test_has_failed = False
+        a_test_has_failed = False
 
         
         for TC in self.TCtables:            
@@ -539,12 +545,20 @@ class testInstance:
                     print(f'Evaluating {TC.cell_title.getCell()} --> ABORT AFTER FAIL')
                     TC.runTestCase(self.context)
                     if TC.runStatus != RUN_STATUSES["PASS"]:
-                        
                         a_abort_test_has_failed = True
+                elif TC.runSetting == RUN_SETTINGS["IF_PREVIOUS_OK"]:
+                    if a_test_has_failed == False:
+                        print(f'Evaluating {TC.cell_title.getCell()} --> IF_PREVIOUS_OK')
+                        TC.runTestCase(self.context)
+                    else:
+                        TC.runSetting = RUN_SETTINGS["DISABLED"]
+                        print(f'Evaluating {TC.cell_title.getCell()} --> DISABLED BECAUSE NOT ALL TESTS ARE PASS')
+                    
                 elif TC.runSetting == RUN_SETTINGS["DISABLED"]:
                     print(f'Evaluating {TC.cell_title.getCell()} --> DISABLED')
                     
                 if TC.runStatus != RUN_STATUSES["PASS"]:
+                    a_test_has_failed = True
                     print('FAILED!!')
             else:
                 TC.runSetting = RUN_SETTINGS["DISABLED"]
