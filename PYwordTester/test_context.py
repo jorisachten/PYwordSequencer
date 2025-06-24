@@ -1,5 +1,7 @@
 import sys
 import io
+import os
+from pathlib import Path
 
 class TeeIO(io.StringIO):
     def __init__(self, *streams):
@@ -24,7 +26,19 @@ class TestContext:
             "DUT_SerialNumber": DUT_SerialNumber,
         }
 
-        if globals_to_import:
+        # Support string path to a folder of Python libs
+        if isinstance(globals_to_import, (str, Path)):
+            lib_path = Path(globals_to_import).resolve()
+            if lib_path.exists():
+                sys.path.insert(0, str(lib_path))
+                # Auto-import all .py files in that folder
+                for file in lib_path.glob("*.py"):
+                    module_name = file.stem
+                    if module_name not in self.context:
+                        imported = __import__(module_name)
+                        self.context[module_name] = imported
+        # Support dict-style import
+        elif isinstance(globals_to_import, dict):
             self.context.update({
                 name: obj for name, obj in globals_to_import.items()
                 if not name.startswith("__")
@@ -62,7 +76,7 @@ class TestContext:
         printed_output = stdout_capture.getvalue()
         return result, printed_output, exec_successful
 
-
+        
     def destroy(self):
         """Clean up the context."""
         self.context.clear()
