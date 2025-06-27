@@ -46,7 +46,7 @@ class TestContext:
 
     def execute(self, code):
         stdout_capture = io.StringIO()
-        if self.debug:
+        if self.debug or 'input(' in code:
             tee_stdout = TeeIO(stdout_capture, sys.__stdout__)
         else:
             tee_stdout = stdout_capture
