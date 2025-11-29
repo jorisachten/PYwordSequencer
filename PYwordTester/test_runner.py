@@ -18,9 +18,11 @@ import pandas as pd
 import os
 import math
 import time
+from uuid import uuid4
+import shutil
 
 
-
+import tempfile
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure 
@@ -419,13 +421,29 @@ class TestCase:
 
 
 class testInstance:
-    def __init__(self,docPath,context):
+    def __init__(self, docPath, context):
         self.docPath = docPath
-        self.doc = Document(self.docPath)
-        self.TCtables = []
-
         self.context = context
+
+        # ---- Create temp copy in system temp folder ----
+        temp_dir = os.path.join(tempfile.gettempdir(), "PYwordTester")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # Keep original extension, but place file in temp folder
+        _, ext = os.path.splitext(self.docPath)
+        base_name = os.path.splitext(os.path.basename(self.docPath))[0]
+        self.tempPath = os.path.join(
+            temp_dir,
+            f"{base_name}_temp_{uuid4().hex}{ext}",
+        )
+
+        shutil.copyfile(self.docPath, self.tempPath)
+
+        # Work on the temp copy so original can stay open in Word
+        self.doc = Document(self.tempPath)
+
         
+        self.TCtables = []
 
         for tabel in self.doc.tables:
             TC = TestCase(tabel)
@@ -622,13 +640,60 @@ class testInstance:
             if table.runStatus.result_ok == False:
                 return False
         return True
-        
 
 
+    # --------------------------------------------------
+    # Save file with retry if target is open in Word
+    # --------------------------------------------------
+    def saveFile(self, path, openFile=False, retries=5, retry_delay=0.5):
+        saved_successfully = False
     
-
-    def saveFile(self, path, openFile = False):
-        self.doc.save(path)
-        time.sleep(1) #give os a second
-        if openFile == True:
+        while True:
+            try:
+                self.doc.save(path)
+                # On successful save, try to clean up temp file
+                self._cleanup_temp()
+                saved_successfully = True
+                break
+            except PermissionError:
+                # Most likely: target file is open in Word
+                print(
+                    f"Could not save to '{path}' (file may be open in Word)."
+                )
+                user_input = input(
+                    "Hit Enter to retry, or type 'abort' and press Enter to stop: "
+                )
+                if user_input.strip().lower() == "abort":
+                    print("Abort writing test report\n")
+                    break
+    
+                time.sleep(retry_delay)
+            except Exception as e:
+                # Unexpected error -> show and abort
+                print(f"Unexpected error while saving to '{path}': {e}")
+                print("Abort writing test report\n")
+                break
+    
+        # Only open the file if we actually saved it successfully
+        if saved_successfully and openFile:
+            # Give OS a moment to release any handles we just used
+            time.sleep(1)
             os.startfile(path)
+
+
+
+    # --------------------------------------------------
+    # Temp file cleanup
+    # --------------------------------------------------
+    def _cleanup_temp(self):
+        if getattr(self, "tempPath", None) and os.path.exists(self.tempPath):
+            try:
+                os.remove(self.tempPath)
+            except PermissionError:
+                # If something still has it open, just leave the temp file.
+                # Better a small leftover than a crash.
+                pass
+
+    def __del__(self):
+        # Best-effort cleanup when object is garbage-collected
+        self._cleanup_temp()
