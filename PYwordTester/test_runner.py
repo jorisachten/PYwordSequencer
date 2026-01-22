@@ -31,6 +31,9 @@ from docx.shared import Inches
 import dataframe_image as dfi
 from pathlib import Path
 
+import re
+_EMPTYISH_RE = re.compile(r"^[\s\u00A0\u200B\u200C\u200D\u2060\ufeff]*$")
+
 
 @dataclass(frozen=True)
 class ResultOutcome:
@@ -87,12 +90,64 @@ RUN_STATUSES: Dict[str, TC_RUN_STATUS] = {
     "ERROR":        TC_RUN_STATUS("ERROR",        RGBColor(255, 140, 0),   False),
 }
 
+
+
+### this block is added as fix for Polarion tooling ####
+from docx.table import Table
+
+def iter_tables_deep(doc):
+    """
+    Yield python-docx Table objects for *all* w:tbl elements in the document,
+    including those inside content controls (w:sdt) and textboxes.
+    """
+    # Main document part (includes SDT/textbox tables too)
+    for tbl_elm in doc._element.xpath(".//w:tbl"):
+        yield Table(tbl_elm, doc)
+
+    # Optional: include headers/footers
+    for section in doc.sections:
+        for part in (section.header, section.footer):
+            for tbl_elm in part._element.xpath(".//w:tbl"):
+                yield Table(tbl_elm, part)
+
+#########
+
+
 class Cell:
     def __init__(self, table, row, col):
         self.cell = table.rows[row].cells[col]
 
-    def getCell(self):
-        return self.cell.text
+
+
+    def getCell(self) -> str:
+        """
+        Return visually meaningful text from a Word cell.
+        Removes Polarion placeholders, NBSP, zero-width chars, hidden runs.
+        """
+        texts = []
+    
+        # Walk runs at XML level to ignore hidden (w:vanish) content
+        for r in self.cell._tc.xpath(".//w:r"):
+            if r.xpath(".//w:vanish"):
+                continue
+            for t in r.xpath(".//w:t"):
+                if t.text:
+                    texts.append(t.text)
+    
+        # Join + normalize
+        out = "".join(texts)
+    
+        # Normalize weird whitespace
+        out = out.replace("\u00A0", " ")
+        out = out.replace("\u200B", "").replace("\u200C", "").replace("\u200D", "")
+        out = out.replace("\u2060", "").replace("\ufeff", "")
+        out = out.strip()
+    
+        # Treat visually-empty as empty
+        if _EMPTYISH_RE.match(out):
+            return ""
+    
+        return out
 
     def setCell(self, value=None, bold=False, color=None, alignment=None):
         if (value == None):
@@ -444,11 +499,13 @@ class testInstance:
 
         
         self.TCtables = []
-
-        for tabel in self.doc.tables:
+        
+        for tabel in iter_tables_deep(self.doc):
             TC = TestCase(tabel)
-            if TC.ValidTC == True:
+            if TC.ValidTC:
                 self.TCtables.append(TC)
+
+
 
     def addTestSummaryFrontPage(self):
         doc = self.doc
